@@ -373,6 +373,7 @@ const ProjectTable = (props) => {
         ProjectDescription: data[0].ProjectDescription,
         // ProjectType: data[0].ProjectType,
         TimelineId: data[0].TimelineId,
+        ProjectViewStatus: data[0].ProjectViewStatus,
         ProjectStatus: data[0].ProjectStatus,
         BudgetId: data[0].BudgetId,
         ServiceCenterId: data[0].ServiceCenterId,
@@ -529,7 +530,21 @@ const ProjectTable = (props) => {
           />
         </Form.Group>
       </Row>
-
+      {/* -------------------------------------------------------CHANGES MADE------------------------------------------------------ */}
+      {/* <Row className="mb-3">
+        <Form.Group as={Col} controlId="formGridProjectViewStatus">
+            <Form.Label>Project View Status</Form.Label>
+            <Form.Control
+              placeholder="Enter Project View Status"
+              value={project?.ProjectViewStatus}
+              onChange={(e) => {
+                console.log(e.target.value);
+                setProject({ ...project, ProjectViewStatus: e.target.value });
+              }}
+            />
+          </Form.Group>
+      </Row> */}
+      {/* -------------------------------------------------------CHANGES MADE------------------------------------------------------ */}
       <Button variant="primary" type="submit">
         Submit
       </Button>

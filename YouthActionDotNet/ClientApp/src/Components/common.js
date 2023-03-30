@@ -706,7 +706,6 @@ export class SearchTags extends React.Component {
             showTagOverlay: !this.state.showTagOverlay
         })
     }
-
     render() {
         let type = " default";
         switch (this.props.type) {
@@ -717,7 +716,7 @@ export class SearchTags extends React.Component {
             case "truncator": type = " truncator"; break;
             case "base": type = " base"; break;
             default: type = " default"; break;
-
+    
         }
         if (type === " truncator") {
             return (
@@ -726,7 +725,7 @@ export class SearchTags extends React.Component {
                 </div>
             )
         }
-
+    
         if (this.state.mode === "mobile") {
             return (
                 <div className={"searchTag d-flex align-items-center" + type}>
@@ -737,19 +736,61 @@ export class SearchTags extends React.Component {
             )
         } else {
             return (
-
                 <div className={"searchTag searchTag-desktop d-flex align-items-center" + type}>
-                    {this.props.showRemove ? <div className={"searchTag-deleteOverlay"}>
-                        <i className="bi bi-pencil" onClick={this.props.onEditClick}></i>
-                        <i className="bi bi-x-circle" onClick={this.props.onCancelClick}></i>
-                    </div> : <div />
-                    }
-
+                    {this.props.showRemove ?
+                        <div className={"searchTag-deleteOverlay"}>
+                            <i className="bi bi-pencil" onClick={this.props.onEditClick}></i>
+                            <i className="bi bi-x-circle" onClick={this.props.onCancelClick}></i>
+                        </div> : <div />}
                     <span>{this.props.children}</span>
                 </div>
             )
         }
     }
+
+    // render() {
+    //     let type = " default";
+    //     switch (this.props.type) {
+    //         case "default": type = " default"; break;
+    //         case "specific": type = " specific"; break;
+    //         case "multiple": type = " multiple"; break;
+    //         case "exclude": type = " exclude"; break;
+    //         case "truncator": type = " truncator"; break;
+    //         case "base": type = " base"; break;
+    //         default: type = " default"; break;
+
+    //     }
+    //     if (type === " truncator") {
+    //         return (
+    //             <div className={"searchTag" + type}>
+    //                 <span>{this.props.children}</span>
+    //             </div>
+    //         )
+    //     }
+
+    //     if (this.state.mode === "mobile") {
+    //         return (
+    //             <div className={"searchTag d-flex align-items-center" + type}>
+    //                 <span>{this.props.children}</span>
+    //                 {this.props.showRemove ?
+    //                     <div className={"searchTag-delete"} onClick={this.props.onCancelClick} ><i className="bi bi-x"></i></div> : <div />}
+    //             </div>
+    //         )
+    //     } else {
+    //         return (
+
+    //             <div className={"searchTag searchTag-desktop d-flex align-items-center" + type}>
+    //                 {this.props.showRemove ? <div className={"searchTag-deleteOverlay"}>
+    //                     <i className="bi bi-pencil" onClick={this.props.onEditClick}></i>
+    //                     <i className="bi bi-x-circle" onClick={this.props.onCancelClick}></i>
+    //                 </div> : <div />
+    //                 }
+
+    //                 <span>{this.props.children}</span>
+    //             </div>
+    //         )
+    //     }
+    // }
 }
 
 SearchTags.defaultProps = {

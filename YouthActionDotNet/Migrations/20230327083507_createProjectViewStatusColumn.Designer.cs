@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using YouthActionDotNet.Data;
 
@@ -10,9 +11,11 @@ using YouthActionDotNet.Data;
 namespace YouthActionDotNet.Migrations
 {
     [DbContext(typeof(DBContext))]
-    partial class DBContextModelSnapshot : ModelSnapshot
+    [Migration("20230327083507_createProjectViewStatusColumn")]
+    partial class createProjectViewStatusColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "7.0.1");
@@ -150,37 +153,6 @@ namespace YouthActionDotNet.Migrations
                     b.HasKey("FileId");
 
                     b.ToTable("File", (string)null);
-                });
-
-            modelBuilder.Entity("YouthActionDotNet.Models.Logs", b =>
-                {
-                    b.Property<int>("logId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("logAction")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("logDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("logDescription")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("logDoneByUser")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("logProject")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("logId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Logs", (string)null);
                 });
 
             modelBuilder.Entity("YouthActionDotNet.Models.Permissions", b =>
@@ -451,15 +423,6 @@ namespace YouthActionDotNet.Migrations
                     b.Navigation("project");
 
                     b.Navigation("user");
-                });
-
-            modelBuilder.Entity("YouthActionDotNet.Models.Logs", b =>
-                {
-                    b.HasOne("YouthActionDotNet.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("YouthActionDotNet.Models.Project", b =>

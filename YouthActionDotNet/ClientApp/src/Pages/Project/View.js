@@ -13,8 +13,11 @@ import { Chart } from "chart.js";
 import * as d3 from "d3";
 import cloud from "d3-cloud";
 import { Pie, Bar, Line } from "react-chartjs-2";
-import { CreateButton } from "./Project";
-
+import { CreatePDFButton } from "./Project";
+import { CreateDocxButton } from "./Project";
+import html2canvas from "html2canvas";
+import JsPDF from "jspdf";
+import { StdButton } from "../../Components/common";
 //feedback charts for satisfaction and recommend
 const FeedbackCharts = ({ satisfactionData, recommendData }) => {
   const satisfactionChartRef = useRef(null);
@@ -57,6 +60,21 @@ const FeedbackCharts = ({ satisfactionData, recommendData }) => {
           borderWidth: 1,
         },
       ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
+        },
+      ],
     };
   };
 
@@ -79,6 +97,21 @@ const FeedbackCharts = ({ satisfactionData, recommendData }) => {
           ],
           borderColor: ["rgba(75, 192, 192, 1)", "rgba(255, 99, 132, 1)"],
           borderWidth: 1,
+        },
+      ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
         },
       ],
     };
@@ -104,6 +137,14 @@ const FeedbackCharts = ({ satisfactionData, recommendData }) => {
         options: {
           height: 20,
           width: 20,
+          scales: {
+            x: {
+              beginAtZero: true,
+            },
+            y: {
+              beginAtZero: true,
+            },
+          },
         },
       });
 
@@ -120,13 +161,29 @@ const FeedbackCharts = ({ satisfactionData, recommendData }) => {
   ]);
 
   return (
+
+
     <div style={{ display: "flex" }}>
-      <div style={{ flex: 1, marginLeft: "50px", marginRight: "50px" }}>
+      <div
+        style={{
+          width: 800,
+          marginLeft: "50px",
+          marginRight: "50px",
+          overflow: "auto",
+          display: "inline-block",
+        }}
+      >
         <h3>Satisfaction Data</h3>
         <canvas ref={satisfactionChartRef} />
       </div>
       <div
-        style={{ flex: 1, marginLeft: "20px", height: "360px", width: "767px" }}
+        style={{
+          width: 500,
+          height: 400,
+          marginLeft: "100px",
+          marginRight: "50px",
+          display: "inline-block",
+        }}
       >
         <h3>Recommend Data</h3>
         <canvas ref={recommendChartRef} />
@@ -445,7 +502,7 @@ export default class View extends React.Component {
       return item.ProjectId === id;
     });
 
-    const projectVolunteers = JSON.parse(Project[0]?.ProjectType || "[]");
+    const projectVolunteers = JSON.parse(Project[0]?.ProjectVolunteer || "[]");
 
     const data = {
       ...Project[0],
@@ -466,12 +523,12 @@ export default class View extends React.Component {
     });
 
     const filteredVolunteers = JSON.parse(
-      Project[0]?.ProjectType || "[]"
+      Project[0]?.ProjectVolunteer || "[]"
     ).filter((item) => item?.UserId !== vol?.UserId);
     const data = {
       ...Project[0],
       ProjectId: Project[0]?.ProjectId,
-      ProjectType: JSON.stringify(filteredVolunteers),
+      ProjectVolunteer: JSON.stringify(filteredVolunteers),
     };
     this.handleUpdate(data);
   };
@@ -589,35 +646,169 @@ export default class View extends React.Component {
               <h3 style={{ position: "absolute", left: "60px" }}>
                 Feedback Word Cloud
               </h3>
+              <div id="wordcloud">
               <FeedbackWordCloud
                 feedbackTextData={feedbackTextDataForProject}
               />
+              </div>
             </div>
-          </div>
-          <CreateButton />
-          <div>
+            <div id="addvolunteertable">
             <VolunteerTable
               deleteVolunteer={this.deleteVolunteer}
               data={data[0]}
             />
-            <h1 style={{ marginTop: "100px", marginBottom: "20px" }}>
-              Add Volunteers to this Project
-            </h1>
-            {console.log(this.state.volunteer)}
-            <TableButton
-              volunteerData={this.state.volunteer}
-              setVolunteerList={this.setVolunteerList}
-              deleteVolunteer={this.deleteVolunteer}
-              data={data[0]}
-              volunteerList={this.state.selectedVolunteer}
-            />
+            </div>
           </div>
+          <h1 style={{ marginTop: "100px", marginBottom: "20px" }}>
+            Add Volunteers to this Project
+          </h1>
+          {console.log(this.state.volunteer)}
+          <div id="addvolunteertable">
+          <TableButton
+            volunteerData={this.state.volunteer}
+            setVolunteerList={this.setVolunteerList}
+            deleteVolunteer={this.deleteVolunteer}
+            data={data[0]}
+            volunteerList={this.state.selectedVolunteer}
+          />
+          </div>
+
+          <CreatePDFButton2 />
+          <br></br>
+          <CreateDocxButton2 />
+          <br></br>
+          <StdButton>Generate XLS</StdButton>
+
+          <br></br>
           <Button onClick={() => this.setVolunteer()}>Submit</Button>
         </DatapageLayout>
       );
     }
   }
 }
+export const CreateDocxButton2 = (props) => {
+  const generateDocx = (element, filename = "") => {
+    const canvas = document.getElementsByTagName("canvas");
+
+    const projecttable = document.getElementById("projecttable");
+    const wordcloud = document.getElementById("wordcloud");
+    // Use html2canvas to generate a canvas element from the table
+    html2canvas(projecttable).then((tableCanvas) => {
+      const tableImgData = tableCanvas.toDataURL("image/png", 1.0);
+
+      const imgData = canvas[0].toDataURL("image/png", 1.0);
+      const imgData2 = canvas[1].toDataURL("image/png", 1.0);
+      const imgData3 = canvas[2].toDataURL("image/png", 1.0);
+      const imgData4 = canvas[3].toDataURL("image/png", 1.0);
+
+
+      var preHtml =
+        "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+      var postHtml = "</body></html>";
+      // var html = preHtml + document.getElementById(element).innerHTML + postHtml;
+      var html = preHtml 
+      + "<h2>Projects in progress and completed</h2>"
+      + "<img src='" + imgData + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Days left to completion</h2>"
+      + "<img src='" + imgData2 + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Days left to completion</h2>"
+      + "<img src='" + imgData3 + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Days left to completion</h2>"
+      + "<img src='" + imgData4 + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Number of projects in budget range</h2>"
+      + "<img src='" + tableImgData + "' width='600'/>" 
+      + postHtml;
+
+      var blob = new Blob(["\ufeff", html], {
+        type: "application/msword",
+      });
+
+      // Specify link url
+      var url =
+        "data:application/vnd.ms-word;charset=utf-8," + encodeURIComponent(html);
+
+      // Specify file name
+      filename = filename ? filename + ".doc" : "document.doc";
+
+      // Create download link element
+      var downloadLink = document.createElement("a");
+
+      document.body.appendChild(downloadLink);
+
+      if (navigator.msSaveOrOpenBlob) {
+        navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        // Create a link to the file
+        downloadLink.href = url;
+
+        // Setting the file name
+        downloadLink.download = filename;
+
+        //triggering the function
+        downloadLink.click();
+      }
+
+      document.body.removeChild(downloadLink);
+    });
+  };
+
+  return (
+    <StdButton onClick={() => generateDocx("pdffile", "word.docx")}>
+      Generate DOCX
+    </StdButton>
+  );
+};
+
+// export const CreatePDFButton2 = (props) => {
+//   const exportPDF = () => {
+//     const canvas = document.getElementsByTagName("canvas");
+//     const projecttable = document.getElementById("projecttable");
+
+//     // Use html2canvas to generate a canvas element from the table
+//     html2canvas(projecttable).then((tableCanvas) => {
+//       const tableImgData = tableCanvas.toDataURL("image/png", 1.0);
+
+//       const imgData = canvas[0].toDataURL("image/png", 1.0);
+//       const imgData2 = canvas[1].toDataURL("image/png", 1.0);
+//       const imgData3 = canvas[2].toDataURL("image/png", 1.0);
+//       const imgData4 = canvas[3].toDataURL("image/png", 1.0);
+
+//       let pdf = new JsPDF("p", "pt", "a4");
+//       pdf.addImage(imgData, "PNG", 20, 30, 250, 250);
+//       pdf.addImage(imgData2, "PNG", 320, 30, 250, 250);
+//       pdf.addImage(imgData3, "PNG", 20, 280, 250, 250);
+//       pdf.addImage(imgData4, "PNG", 320, 280, 250, 250);
+//       // pdf.addImage(tableImgData2, "PNG", 20, 560, 500, 500);
+//       // pdf.addImage(tableImgData, "PNG", 20, 560, 600, 100);
+
+//       pdf.save("Default.pdf");
+//     });
+//   };
+
+//   return <StdButton onClick={() => exportPDF()}>Generate PDF</StdButton>;
+// };
+export const CreatePDFButton2 = (props) => {
+  const exportPDF = () => {
+    const budgettable = document.getElementById("pdffile");
+
+    // Use html2canvas to generate a canvas element from the table
+    html2canvas(budgettable).then((tableCanvas) => {
+      const tableImgData = tableCanvas.toDataURL("image/png", 1.0);
+
+      let pdf = new JsPDF("p", "pt", "a4");
+
+      pdf.addImage(tableImgData, "PNG", 0, 0, 595, 842);
+
+      pdf.save("Default.pdf");
+    });
+  };
+
+  return <StdButton onClick={() => exportPDF()}>Generate PDF</StdButton>;
+};
 
 const ProjectTable = (props) => {
   const data = props.data;
@@ -661,7 +852,7 @@ const ProjectTable = (props) => {
     const res = await axios
       .put(`https://localhost:5001/api/Project/${data.ProjectId}`, {
         ...data,
-        ProjectStatus: "Pinned",
+        ProjectViewStatus: "Pinned",
       })
       .then(window.location.reload());
     console.log(res);
@@ -672,7 +863,7 @@ const ProjectTable = (props) => {
     const res = await axios
       .put(`https://localhost:5001/api/Project/${data.ProjectId}`, {
         ...data,
-        ProjectStatus: "inProgress",
+        ProjectViewStatus: "None",
       })
       .then(window.location.reload());
     console.log(res);
@@ -682,7 +873,7 @@ const ProjectTable = (props) => {
     const res = await axios
       .put(`https://localhost:5001/api/Project/${data.ProjectId}`, {
         ...data,
-        ProjectStatus: "Archived",
+        ProjectViewStatus: "Archived",
       })
       .then(window.location.reload());
     console.log(res);
@@ -690,6 +881,7 @@ const ProjectTable = (props) => {
   console.log(budget);
   return (
     <>
+    <div id="projecttable">
       <Table striped bordered hover>
         <thead>
           <tr>
@@ -725,7 +917,7 @@ const ProjectTable = (props) => {
               <button onClick={() => routeChange(data.ProjectId)}>Edit</button>
               <button
                 onClick={() => {
-                  if (data.ProjectStatus === "Pinned") {
+                  if (data.ProjectViewStatus === "Pinned") {
                     handleUnpin(data);
                   } else {
                     handlePin(data);
@@ -734,11 +926,23 @@ const ProjectTable = (props) => {
               >
                 Pin
               </button>
-              <button onClick={() => handleArchive(data)}>Archive</button>
+              <button
+                onClick={() => {
+                  if (data.ProjectViewStatus === "Archived") {
+                    handleUnpin(data);
+                  } else {
+                    handleArchive(data);
+                  }
+                }}
+              >
+                Archive
+              </button>
             </td>
           </tr>
         </tbody>
       </Table>
+      </div>
+      <h1>Project Analysis</h1>
       <GenerateChart data={data} timeline={timeline} budget={budget} />
     </>
   );
@@ -955,6 +1159,21 @@ function GenerateChart(props) {
           borderWidth: 1,
         },
       ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
+        },
+      ],
     };
   };
 
@@ -996,6 +1215,21 @@ function GenerateChart(props) {
           backgroundColor: "#94795d",
         },
       ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
+        },
+      ],
     };
   };
 
@@ -1003,10 +1237,10 @@ function GenerateChart(props) {
     <div
       style={{
         display: "flex",
-        justifyContent: "space-between",
+        justifyContent: "space-evenly",
       }}
     >
-      <div style={{ width: 600, height: 300, overflow: "auto" }}>
+      <div style={{ width: 800, height: 400, overflow: "auto" }}>
         {console.log(item, budget, timeline)}
         <Bar
           data={getChartData1(
@@ -1016,7 +1250,7 @@ function GenerateChart(props) {
           )}
         />
       </div>
-      <div style={{ width: 600, height: 300, overflow: "auto" }}>
+      <div style={{ width: 800, height: 400, overflow: "auto" }}>
         <Line
           data={getChartData2(
             timeline?.ProjectStartDate,

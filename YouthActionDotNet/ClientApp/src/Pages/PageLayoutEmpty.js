@@ -8,6 +8,7 @@ import {
   SearchTags,
   StdButton,
   SearchButton,
+  TagsBox,
 } from "../Components/common";
 import { AccessDeniedPanel, Loading } from "../Components/appCommon";
 import { StdInput } from "../Components/input";
@@ -20,6 +21,8 @@ import {
 } from "../Components/tableComponents";
 import { CSVLink } from "react-csv";
 import U from "../Utilities/utilities";
+import { ProjectTable } from "./Project/Project";
+import { GetTagValue } from './Project/Project';
 
 export const searchSuggestions = [];
 
@@ -187,10 +190,39 @@ export default class DatapageLayoutEmpty extends React.Component {
     });
   }
 
-  handleSearchCallBack = (query) => {
-    this.props.handleSearchCallBack(query);
+  // handleSearchCallBack = (query) => {
+  //   this.props.handleSearchCallBack(query);
+  // };
+  // -----------------------------------------------------TO BE COMMMENTED-----------------------------------//
+  handleSearchCallBack = (tags) => {
+    if (tags.length === 0) {
+      return this.setState({
+        data: this.props.data,
+      });
+    }
+    let filteredData = [];
+    this.props.data.forEach((item) => {
+      Object.keys(item).forEach((key) => {
+        tags.forEach((tag) => {
+          let tagvalue = tag.value.substring(1, tag.value.length - 1);
+          let found = String(item[key])
+            .toLowerCase()
+            .includes(tagvalue.toLowerCase());
+          if (found) {
+            if (filteredData.find((filteredItem) => filteredItem === item)) {
+              return;
+            } else {
+              filteredData.push(item);
+            }
+          }
+        });
+      });
+    });
+    this.setState({
+      data: filteredData,
+    });
   };
-
+  //--------------------------------------------------------TO BE COMMENTED----------------------------------------------//
   handleClose() {
     this.setState({
       popUpContent: "",
@@ -250,7 +282,7 @@ export default class DatapageLayoutEmpty extends React.Component {
     );
   }
 }
-class TableHeader extends React.Component {
+export class TableHeader extends React.Component {
   constructor(props) {
     super(props);
     this.toggleSearchBar = this.toggleSearchBar.bind(this);
@@ -295,10 +327,28 @@ class TableHeader extends React.Component {
     });
   }
 
-  searchCallBack(query) {
-    this.props.handleSearchCallBack(query);
+  // searchCallBack(query) {
+  //   this.props.handleSearchCallBack(query);
+  // }
+  //----------------------------TO BE COMMENTED-----------------------//
+  searchCallBack(tag) {
+    console.log(tag);
+    // <GetTagValue tagValue={tag.value}></GetTagValue>
+    var curTags = this.state.currentTags;
+    curTags.push(tag);
+    this.setState({
+      currentTags: curTags,
+    });
+
+    this.props.handleSearchCallBack(this.state.currentTags);
+  }
+  handleEditClick = (tagToEdit) => {
+    // handle the edit click event
+    localStorage.setItem('tag-value',tagToEdit.value.substring(1, tagToEdit.value.length - 1))
+    console.log("handleEditClick "+localStorage.getItem("tag-value"))
   }
 
+  //----------------------------TO BE COMMENTED-----------------------//
   render() {
     return (
       <div className="tableHeader">
@@ -383,6 +433,30 @@ class TableHeader extends React.Component {
           actions={this.props.actions}
         ></HeaderExpansion>
         <DivSpacing spacing={1}></DivSpacing>
+        {/*------------------------------------------------------- TO BE COMMENTED --------------------------------------------------------------*/}
+        <TagsBox
+          showlabel={true}
+          enableDeleteAll={true}
+          className=" p-2"
+          deleteAllTags={this.deleteAllTags}
+        >
+          {this.state.currentTags.map((tag, index) => {
+            return (
+              <SearchTags
+                onCancelClick={() => this.onCancelClick(tag)}
+                type={tag.type}
+                key={index}
+                tagValue={tag.value}
+                onEditClick={() => this.handleEditClick(tag)}
+              >
+                {tag.value}
+                <GetTagValue tagValue={tag.value}></GetTagValue>
+              </SearchTags>
+            );
+          })}
+        </TagsBox>
+        <DivSpacing spacing={1}></DivSpacing>
+        {/*------------------------------------------------------- TO BE COMMENTED ----------------------------------------------------------------*/}
       </div>
     );
   }
@@ -391,7 +465,7 @@ TableHeader.defaultProps = {
   component: "",
 };
 
-class HeaderExpansion extends React.Component {
+export class HeaderExpansion extends React.Component {
   state = {
     currentStep: 0,
     steps: [],
@@ -864,188 +938,446 @@ class BottomMenu extends React.Component {
     );
   }
 }
-
-class SearchBar extends React.Component {
+export class SearchBar extends React.Component {
   constructor(props) {
-    super(props);
-    this.state = {
-      expanded: false,
-      inputClasses: "SearchFieldGroup",
-      showToolTip: false,
-      searchQuery: "",
-      selectedTag: "",
-      tagType: "",
-      suggestions: this.props.suggestions,
-      macrosSuggestion: this.props.suggestions.filter(
-        (suggestion) => suggestion.type === "macro"
-      ),
-      specificSuggestion: this.props.suggestions.filter(
-        (suggestion) => suggestion.type === "specific"
-      ),
-      multipleSuggestion: this.props.suggestions.filter(
-        (suggestion) => suggestion.type === "multiple"
-      ),
-      placeholder: "",
-    };
-    this.searchInput = React.createRef();
-    this.toggle = this.toggle.bind(this);
-    this.focus = this.focus.bind(this);
-    this.toggleToolTip = this.toggleToolTip.bind(this);
-    this.searchCallBack = this.searchCallBack.bind(this);
-    this.onCancelClick = this.onCancelClick.bind(this);
-    this.handleKeydown = this.handleKeydown.bind(this);
-    this.state.expanded = this.props.persist ? true : false;
-    this.state.inputClasses = this.props.persist
-      ? "SearchFieldGroup if-active"
-      : "SearchFieldGroup";
+      super(props);
+      this.state = {
+          expanded: false,
+          inputClasses: "SearchFieldGroup",
+          showToolTip: false,
+          searchQuery: "",
+          selectedTag: "",
+          tagType: "",
+          suggestions: this.props.suggestions,
+          macrosSuggestion: this.props.suggestions.filter(suggestion => suggestion.type === "macro"),
+          specificSuggestion: this.props.suggestions.filter(suggestion => suggestion.type === "specific"),
+          multipleSuggestion: this.props.suggestions.filter(suggestion => suggestion.type === "multiple"),
+          placeholder: "",
+      }
+      this.searchInput = React.createRef();
+      this.toggle = this.toggle.bind(this);
+      this.focus = this.focus.bind(this);
+      this.toggleToolTip = this.toggleToolTip.bind(this);
+      this.searchCallBack = this.searchCallBack.bind(this);
+      this.onCancelClick = this.onCancelClick.bind(this);
+      this.handleKeydown = this.handleKeydown.bind(this);
+      this.state.expanded = this.props.persist ? true : false;
+      this.state.inputClasses = this.props.persist ? "SearchFieldGroup if-active" : "SearchFieldGroup";
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.persist !== this.props.persist) {
-      this.updateAndNotify();
-    }
+      if (prevProps.persist !== this.props.persist) {
+          this.updateAndNotify();
+      }
   }
 
   focus() {
-    if (!this.props.persist) {
-      this.searchInput.current.focus();
-    }
+      if (!this.props.persist) {
+          this.searchInput.current.focus()
+      }
   }
 
   updateAndNotify() {
-    this.setState({
-      expanded: true,
-      inputClasses: "SearchFieldGroup if-active",
-    });
+      this.setState({
+          expanded: true,
+          inputClasses: "SearchFieldGroup if-active"
+      })
   }
 
   toggleToolTip = (e) => {
-    e.stopPropagation();
-    this.setState({
-      showToolTip: !this.state.showToolTip,
-    });
-  };
+      e.stopPropagation()
+      this.setState({
+          showToolTip: !this.state.showToolTip
+      })
+  }
   toggle() {
-    this.props.onClick();
+      this.props.onClick();
 
-    if (this.props.persist) {
-      this.searchInput.current.focus();
-      return;
-    } else {
-      if (this.state.expanded) {
-        this.setState({
-          expanded: false,
-          inputClasses: "SearchFieldGroup",
-        });
+      if (this.props.persist) {
+          this.searchInput.current.focus();
+          return;
       } else {
-        this.setState({
-          expanded: true,
-          inputClasses: "SearchFieldGroup if-active",
-        });
-        this.searchInput.current.focus();
+
+          if (this.state.expanded) {
+              this.setState({
+                  expanded: false,
+                  inputClasses: "SearchFieldGroup"
+              })
+          } else {
+              this.setState({
+                  expanded: true,
+                  inputClasses: "SearchFieldGroup if-active"
+              })
+              this.searchInput.current.focus();
+          }
       }
-    }
+
   }
 
   setSearch(option) {
-    this.searchInput.current.value = option;
+      this.searchInput.current.value = option;
   }
 
   setPrimaryInput(tag) {
-    this.setState({
-      selectedTag: tag.value,
-      tagType: tag.type,
-    });
-    this.searchInput.current.value = "";
-
-    if (tag.value.slice(1) === "gender") {
       this.setState({
-        suggestions: [
-          { value: "Male", label: "Male", type: "" },
-          { value: "Female", label: "Female", type: "" },
-        ],
-        placeholder: "Enter a gender",
-      });
-    }
-    this.searchInput.current.focus();
+          selectedTag: tag.value,
+          tagType: tag.type,
+      })
+      this.searchInput.current.value = ""
+
+      if (tag.value.slice(1) === "gender") {
+          this.setState({
+              suggestions: [{ value: "Male", label: "Male", type: "" }, { value: "Female", label: "Female", type: "" }],
+              placeholder: "Enter a gender",
+          })
+      }
+      this.searchInput.current.focus();
   }
 
   handleSearchQueryChange = (e) => {
-    this.setState({
-      searchQuery: e.target.value,
-    });
-  };
+      this.setState({
+          searchQuery: e.target.value
+      })
+  }
 
   handleKeydown = (e, tag) => {
-    if (e.key === "Enter") {
-      this.searchCallBack(tag);
-    }
-  };
+      if (e.key === "Enter") {
+          this.searchCallBack(tag);
+      }
+  }
 
   searchCallBack(tag) {
-    this.setState({
-      selectedTag: "",
-      tagType: "",
-      suggestions: searchSuggestions,
-      placeholder: "",
-    });
-    this.searchInput.current.value = "";
-    this.searchInput.current.focus();
-    this.props.searchCallBack(tag);
+      this.setState({
+          selectedTag: "",
+          tagType: "",
+          suggestions: searchSuggestions,
+          placeholder: "",
+      })
+      this.searchInput.current.value = ""
+      this.searchInput.current.focus();
+      this.props.searchCallBack(tag);
   }
 
   onCancelClick() {
-    this.setState({
-      selectedTag: "",
-      tagType: "",
-      suggestions: searchSuggestions,
-      placeholder: "",
-    });
-    this.searchInput.current.value = "";
+      this.setState({
+          selectedTag: "",
+          tagType: "",
+          suggestions: searchSuggestions,
+          placeholder: "",
+      })
+      this.searchInput.current.value = "";
   }
 
   render() {
-    return (
-      <div className={this.props.className}>
-        <div className={" justify-content-end d-flex align-items-center"}>
-          <div className="searchBar">
-            <SearchButton
-              onClick={this.toggle}
-              className={this.props.invert ? "invert" : ""}
-              icon={<i className="bi bi-search"></i>}
-              toolTip={this.props.toolTip}
-              showToolTip={this.state.showToolTip}
-              onMouseEnter={this.toggleToolTip}
-              onMouseLeave={this.toggleToolTip}
-            ></SearchButton>
+
+      return (
+          <div className={this.props.className}>
+              <div className={" justify-content-end d-flex align-items-center"}>
+                  <div className="searchBar">
+                      <SearchButton onClick={this.toggle} className={this.props.invert ? "invert" : ""} icon={<i className="bi bi-search"></i>} toolTip={this.props.toolTip} showToolTip={this.state.showToolTip} onMouseEnter={this.toggleToolTip} onMouseLeave={
+                          this.toggleToolTip}></SearchButton>
+
+                  </div>{this.state.selectedTag !== "" &&
+                      <SearchTags showEdit={false} onCancelClick={this.onCancelClick} type={this.state.tagType}>{this.state.selectedTag}</SearchTags>
+                  }
+                  <div className={"d-flex align-items-center " + this.state.inputClasses} onAnimationEnd={this.focus}>
+                      <input type={"text"} className={"SearchField"} placeholder={this.state.placeholder} ref={this.searchInput} onChange={this.handleSearchQueryChange} onKeyDown={(e) => this.handleKeydown(e, { type: this.state.tagType, value: this.state.selectedTag + "(" + this.searchInput.current.value + ")" })}></input>
+                      {this.state.selectedTag === "" &&
+                          <div className={"dropdown "} style={{ "--maxItems": 5, "gridTemplateColumns": ["@", ":", "+", "#"].includes(this.state.searchQuery[0]) ? "1fr" : "" }}>
+                              {(this.state.searchQuery[0] === ":" || !["@", ":", "+", "#"].includes(this.state.searchQuery[0]) || this.state.searchQuery === "") &&
+                                  <div className="macros">
+                                      <div className="d-flex tagDescListTile macros">
+                                          <div className="icon macros">
+                                              :
+                                          </div>
+                                          <div className="tagDesc macros">
+                                              <h6 className="macros">:MacroName</h6>
+                                              <p>
+                                                  Predefined macros for quick and easy search filtering.
+                                              </p>
+                                          </div>
+                                      </div>
+
+                                      {this.state.macrosSuggestion.length === 0 ?
+                                          <div className="noMacrosPlaceHolder">
+                                              There are no macros created. Click below to create a new macro.
+                                              <StdButton onClick={() => this.props.toggleTagMacros("tm")} className={"primary"}>Create New Macro</StdButton>
+                                          </div>
+                                          :
+                                          <div className="row row-cols-xs-3 row-cols-md-2 row-cols-lg-3 row-cols-1 searchSuggestions">
+                                              {this.state.macrosSuggestion.map((option, index) => {
+                                                  if (((option.label.toLowerCase().includes(this.state.searchQuery.toLowerCase()) || this.state.searchQuery === "") && option.type !== "specific" && option.type !== "multiple")) {
+                                                      return <StdInputDropDownOption key={index} value={option.value} onClick={() => this.searchCallBack({ type: option.type, value: option.value })}>{option.label}</StdInputDropDownOption>
+                                                  }
+                                                  return "";
+                                              })}
+                                          </div>
+                                      }
+
+
+                                  </div>
+                              }
+                              {(this.state.searchQuery[0] === "@" || !["@", ":", "+", "#"].includes(this.state.searchQuery[0]) || this.state.searchQuery === "") &&
+
+                                  <div className="specific">
+                                      <div className="d-flex tagDescListTile specific">
+                                          <div className="icon specific">
+                                              @
+                                          </div>
+                                          <div className="tagDesc specific">
+                                              <h6 className="specific">@column(interest)</h6>
+                                              <p>
+                                                  Targets specific column, only return entries with column value like interest
+                                              </p>
+                                          </div>
+                                      </div>
+                                      <div className="row row-cols-xs-3 row-cols-md-2 row-cols-lg-3 row-cols-1 searchSuggestions">
+                                          {this.state.specificSuggestion.map((option, index) => {
+                                              if ((option.label.toLowerCase().includes(this.state.searchQuery.toLowerCase()) || this.state.searchQuery === "") && option.type === "specific") {
+                                                  return <StdInputDropDownOption key={index} value={option.value} onClick={() => this.setPrimaryInput(option)}>{option.label}</StdInputDropDownOption>
+                                              }
+                                              return "";
+                                          }
+                                          )}
+                                      </div>
+                                  </div>
+                              }
+                              {(this.state.searchQuery[0] === "+" || !["@", ":", "+", "#"].includes(this.state.searchQuery[0]) || this.state.searchQuery === "") &&
+                                  <div className="multiple">
+                                      <div className="d-flex tagDescListTile multiple">
+                                          <div className="icon multiple">
+                                              +
+                                          </div>
+                                          <div className="tagDesc multiple">
+                                              <h6 className="multiple">+column(interest)</h6>
+                                              <p>
+                                                  Multiple targeting of specific column, returns entries with column value like interestA or interestB
+                                              </p>
+                                          </div>
+                                      </div>
+                                      <div className="row row-cols-xs-3 row-cols-md-2 row-cols-lg-3 row-cols-1 searchSuggestions">
+                                          {this.state.multipleSuggestion.map((option, index) => {
+                                              if ((option.label.toLowerCase().includes(this.state.searchQuery.toLowerCase()) || this.state.searchQuery === "") && option.type === "multiple") {
+                                                  return <StdInputDropDownOption key={index} value={option.value} onClick={() => this.setPrimaryInput(option)}>{option.label}</StdInputDropDownOption>
+                                              }
+                                              return "";
+                                          }
+                                          )}
+                                      </div>
+                                  </div>
+                              }
+
+                          </div>
+                      }
+                      {this.state.selectedTag !== "" &&
+                          <div className="dropdown row" style={{ "--maxItems": 5 }}>
+                              {this.state.suggestions.map((option, index) => {
+                                  if (option.label.toLowerCase().includes(this.state.searchQuery.toLowerCase()) || this.state.searchQuery === "") {
+                                      return <StdInputDropDownOption className={"col-12 col-md-6 col-lg-3"} key={index} value={option.value} onClick={() => this.searchCallBack({ type: this.state.tagType, value: this.state.selectedTag + "(" + option.value + ")" })}>{option.label}</StdInputDropDownOption>
+                                  }
+                                  return "";
+                              }
+                              )}
+                          </div>
+                      }
+                  </div>
+              </div>
           </div>
-          {this.state.selectedTag !== "" && (
-            <SearchTags
-              showEdit={false}
-              onCancelClick={this.onCancelClick}
-              type={this.state.tagType}
-            >
-              {this.state.selectedTag}
-            </SearchTags>
-          )}
-          <div
-            className={"d-flex align-items-center " + this.state.inputClasses}
-            onAnimationEnd={this.focus}
-          >
-            <input
-              type={"text"}
-              className={"SearchField"}
-              placeholder={this.state.placeholder}
-              ref={this.searchInput}
-              onChange={this.handleSearchQueryChange}
-              onKeyDown={(e) => this.handleKeydown(e, this.state.searchQuery)}
-            ></input>
-          </div>
-        </div>
-      </div>
-    );
+      )
   }
 }
+export class StdInputDropDownOption extends React.Component {
+  render() {
+      return (
+          <div className={"dropdownOptions " + this.props.className} type={this.props.type} value={this.props.value} onClick={this.props.onClick}>
+
+              {this.props.children}
+          </div>
+      )
+  }
+}
+
+// class SearchBar extends React.Component {
+//   constructor(props) {
+//     super(props);
+//     this.state = {
+//       expanded: false,
+//       inputClasses: "SearchFieldGroup",
+//       showToolTip: false,
+//       searchQuery: "",
+//       selectedTag: "",
+//       tagType: "",
+//       suggestions: this.props.suggestions,
+//       macrosSuggestion: this.props.suggestions.filter(
+//         suggestion => suggestion.type === "macro"
+//       ),
+//       specificSuggestion: this.props.suggestions.filter(
+//         suggestion => suggestion.type === "specific"
+//       ),
+//       multipleSuggestion: this.props.suggestions.filter(
+//         suggestion => suggestion.type === "multiple"
+//       ),
+//       placeholder: "",
+//     };
+//     this.searchInput = React.createRef();
+//     this.toggle = this.toggle.bind(this);
+//     this.focus = this.focus.bind(this);
+//     this.toggleToolTip = this.toggleToolTip.bind(this);
+//     this.searchCallBack = this.searchCallBack.bind(this);
+//     this.onCancelClick = this.onCancelClick.bind(this);
+//     this.handleKeydown = this.handleKeydown.bind(this);
+//     this.state.expanded = this.props.persist ? true : false;
+//     this.state.inputClasses = this.props.persist
+//       ? "SearchFieldGroup if-active"
+//       : "SearchFieldGroup";
+//   }
+
+//   componentDidUpdate(prevProps) {
+//     if (prevProps.persist !== this.props.persist) {
+//       this.updateAndNotify();
+//     }
+//   }
+
+//   focus() {
+//     if (!this.props.persist) {
+//       this.searchInput.current.focus();
+//     }
+//   }
+
+//   updateAndNotify() {
+//     this.setState({
+//       expanded: true,
+//       inputClasses: "SearchFieldGroup if-active",
+//     });
+//   }
+
+//   toggleToolTip = (e) => {
+//     e.stopPropagation();
+//     this.setState({
+//       showToolTip: !this.state.showToolTip,
+//     });
+//   };
+//   toggle() {
+//     this.props.onClick();
+
+//     if (this.props.persist) {
+//       this.searchInput.current.focus();
+//       return;
+//     } else {
+//       if (this.state.expanded) {
+//         this.setState({
+//           expanded: false,
+//           inputClasses: "SearchFieldGroup",
+//         });
+//       } else {
+//         this.setState({
+//           expanded: true,
+//           inputClasses: "SearchFieldGroup if-active",
+//         });
+//         this.searchInput.current.focus();
+//       }
+//     }
+//   }
+
+//   setSearch(option) {
+//     this.searchInput.current.value = option;
+//   }
+
+//   setPrimaryInput(tag) {
+//     this.setState({
+//       selectedTag: tag.value,
+//       tagType: tag.type,
+//     });
+//     this.searchInput.current.value = "";
+
+//     if (tag.value.slice(1) === "gender") {
+//       this.setState({
+//         suggestions: [
+//           { value: "Male", label: "Male", type: "" },
+//           { value: "Female", label: "Female", type: "" },
+//         ],
+//         placeholder: "Enter a gender",
+//       });
+//     }
+//     this.searchInput.current.focus();
+//   }
+
+//   handleSearchQueryChange = (e) => {
+//     this.setState({
+//       searchQuery: e.target.value,
+//     });
+//   };
+
+//   handleKeydown = (e, tag) => {
+//     if (e.key === "Enter") {
+//       this.searchCallBack(tag);
+//     }
+//   };
+
+//   searchCallBack(tag) {
+//     this.setState({
+//       selectedTag: "",
+//       tagType: "",
+//       suggestions: searchSuggestions,
+//       placeholder: "",
+//     });
+//     this.searchInput.current.value = "";
+//     this.searchInput.current.focus();
+//     this.props.searchCallBack(tag);
+//   }
+
+//   onCancelClick() {
+//     this.setState({
+//       selectedTag: "",
+//       tagType: "",
+//       suggestions: searchSuggestions,
+//       placeholder: "",
+//     });
+//     this.searchInput.current.value = "";
+//   }
+
+//   render() {
+//     return (
+//       <div className={this.props.className}>
+//         <div className={" justify-content-end d-flex align-items-center"}>
+//           <div className="searchBar">
+//             <SearchButton
+//               onClick={this.toggle}
+//               className={this.props.invert ? "invert" : ""}
+//               icon={<i className="bi bi-search"></i>}
+//               toolTip={this.props.toolTip}
+//               showToolTip={this.state.showToolTip}
+//               onMouseEnter={this.toggleToolTip}
+//               onMouseLeave={this.toggleToolTip}
+//             ></SearchButton>
+//           </div>
+//           {this.state.selectedTag !== "" && (
+//             <SearchTags
+//               showEdit={false}
+//               onCancelClick={this.onCancelClick}
+//               type={this.state.tagType}
+//             >
+//               {this.state.selectedTag}
+//             </SearchTags>
+//           )}
+//           <div
+//             className={"d-flex align-items-center " + this.state.inputClasses}
+//             onAnimationEnd={this.focus}
+//           >
+//             <input
+//               type={"text"}
+//               className={"SearchField"}
+//               placeholder={this.state.placeholder}
+//               ref={this.searchInput}
+//               onChange={this.handleSearchQueryChange}
+//               onKeyDown={(e) => this.handleKeydown(e, this.state.searchQuery)}
+//             ></input>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+// }
 SearchBar.defaultProps = {
   invert: false,
   suggestions: searchSuggestions,

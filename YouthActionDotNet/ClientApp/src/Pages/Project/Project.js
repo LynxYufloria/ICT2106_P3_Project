@@ -2,6 +2,7 @@ import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { Loading } from "../../Components/appCommon";
 import DatapageLayout from "../PageLayoutEmpty";
+import handleSearchCallBack from "../PageLayoutEmpty";
 import Table from "react-bootstrap/Table";
 import { useParams } from "react-router-dom";
 import { BrowserRouter as Router, Link, Switch, Route } from "react-router-dom";
@@ -22,6 +23,13 @@ import { FaFileWord } from "react-icons/fa";
 import { FaFileCsv } from "react-icons/fa";
 import { FaFilePdf } from "react-icons/fa";
 import { Pie, Bar, Line } from "react-chartjs-2";
+
+import { saveAs } from "file-saver";
+import { Document, Packer, Paragraph } from "docx";
+import html2canvas from "html2canvas";
+
+import { Button } from 'react-bootstrap';
+
 export default class Project extends React.Component {
   // state = {
   //   content: null,
@@ -70,6 +78,10 @@ export default class Project extends React.Component {
 
   async componentDidMount() {
     //-------------------------------------------TO BE UPDATED---------------------------------------//
+    // window.addEventListener("storage",function(e) {
+    //   // setSearchValue(localStorage.getItem("tag-value"))
+    //   console.log("DISPLAYTABLE"+localStorage.getItem("tag-value"))
+    // })
     await this.getAllContent().then((allContent) => {
       console.log("here");
       console.log(allContent);
@@ -135,8 +147,8 @@ export default class Project extends React.Component {
       return perm === "Module"
         ? null
         : perms[perm] === true
-        ? reformattedPerms.push(perm)
-        : null;
+          ? reformattedPerms.push(perm)
+          : null;
     });
 
     this.setState({
@@ -352,6 +364,47 @@ export default class Project extends React.Component {
         archived: archived,
         loading: false,
       });
+    });
+  };
+
+  createLog = async (data) => {
+    return fetch("https://localhost:5001/api/Logs/Create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }).then(function (res) {
+      return res.json();
+    });
+  };
+
+  updateLog = async (data) => {
+    console.log(data);
+    return fetch(`${this.settings.api}UpdateAndFetch/${data.logId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }).then(async (res) => {
+      return res.json();
+    });
+  };
+
+  handleLogUpdate = async (data) => {
+    await this.updateLog(data).then((content) => {
+      if (content.success) {
+        this.setState({
+          error: "",
+        });
+        return true;
+      } else {
+        this.setState({
+          error: content.message,
+        });
+        return false;
+      }
     });
   };
   //------------------------------------------------TO BE UPDATED---------------------------------------//
@@ -614,26 +667,6 @@ export default class Project extends React.Component {
             permissions={this.props.permissions}
             requestError={this.requestError}
             has={this.has}
-            extraComponents={[
-              {
-                label: "Archived Projects",
-                key: "archivedProjects",
-                requiredPerms: ["Create", "Update", "Delete", "Read"],
-                component: (
-                  <ViewManagement
-                    settings={this.settings}
-                    requestArchived={this.requestArchived}
-                    updateHandle={this.props.updateHandle}
-                    headers={this.state.settings.data.ColumnSettings}
-                    fieldSettings={this.state.settings.data.FieldSettings}
-                    setExpansionContent={this.props.setExpansionContent}
-                    data={this.state.archived.data}
-                    requestError={this.requestError}
-                    api={this.settings.api}
-                  ></ViewManagement>
-                ),
-              },
-            ]}
           >
             <DisplayTables
               data={this.state.content.data}
@@ -653,6 +686,16 @@ const DisplayTables = (props) => {
   const data = props.data;
   const deleteFn = props.delete;
   const createFn = props.create;
+  const tagValue = tagValueConstant;
+  //-------------------------------------------------------------------//
+
+  function handleKeydown(e) {
+    if (e.key === "Enter") {
+      setSearchValue(localStorage.getItem("tag-value"));
+    }
+  }
+  document.addEventListener("keydown", handleKeydown);
+  //------------------------------------------------------------------//
   let navigate = useNavigate();
   const routeChange = (id) => {
     let path = `/Project/View/${id}`;
@@ -668,6 +711,9 @@ const DisplayTables = (props) => {
   const [archiveProjects, setArchiveProjects] = useState([]);
   const [pinnedProjects, setPinnedProjects] = useState([]);
   const [otherProjects, setOtherProjects] = useState([]);
+  //------------------------------------------------------------------------------//
+  const [searchValue, setSearchValue] = useState("");
+  //------------------------------------------------------------------------------//
   const [projRef, setProjRef] = useState();
   const [undo, setUndo] = useState(false);
   const [sorting, setSorting] = useState({
@@ -693,6 +739,20 @@ const DisplayTables = (props) => {
     className: "black-background",
     position: toast.POSITION.BOTTOM_CENTER,
   };
+  //------------------------------------------------------------------------------//
+  const filterArticles = (searchValue) => {
+    if (searchValue === "") {
+      return projects;
+    }
+    return projects.filter((project) =>
+      project.ProjectName.toLowerCase().includes(searchValue.toLowerCase())
+    );
+  };
+  useEffect(() => {
+    const filteredArticles = filterArticles(searchValue);
+    setOtherProjects(filteredArticles);
+  }, [searchValue]);
+  //------------------------------------------------------------------------------//
 
   //When delete is clicked, all details of the project will be copied and stored in temporary variable.
   useEffect(() => {
@@ -750,21 +810,30 @@ const DisplayTables = (props) => {
         })
         .slice();
     }
-    // Replace currentprojects with sorted currentprojects
-
     const projectsPinned = sortedProjects.filter((project) => {
-      return project.ProjectStatus == "Pinned";
+      return project.ProjectViewStatus == "Pinned";
     });
 
     const projectsArchived = sortedProjects.filter((project) => {
-      return project.ProjectStatus == "Archived";
+      return project.ProjectViewStatus == "Archived";
     });
 
     const projectsOther = sortedProjects.filter((project) => {
       return (
-        !projectsArchived.includes(project) && !projectsPinned.includes(project)
+        project.ProjectViewStatus == "None" || project.ProjectViewStatus == null
       );
     });
+    // const projectsOther = sortedProjects.filter((project) => {
+    //   return (project.ProjectViewStatus == "None" || project.ProjectViewStatus == null)&&project.ProjectName == tagValueConstant;
+    // });
+    // const projectsOther = sortedProjects.filter((project) => {
+    //   console.log("refreshTable"+tagValueConstant)
+    //   return project.ProjectName == tagValueConstant;
+    // });
+
+    // const searchProjects = sortedProjects.filter((project) => {
+    //   return project.ProjectName == tagValue;
+    // });
 
     setArchiveProjects(
       sorting.ascending ? projectsArchived : projectsArchived.reverse()
@@ -805,6 +874,7 @@ const DisplayTables = (props) => {
           ProjectCompletionDate: projRef[0].ProjectCompletionDate,
           ProjectVolunteer: projRef[0].ProjectVolunteer,
           ProjectStatus: projRef[0].ProjectStatus,
+          ProjectViewStatus: projRef[0].ProjectViewStatus,
           // ProjectType: projRef[0].ProjectType,
           ServiceCenterId: projRef[0].ServiceCenterId,
         };
@@ -866,21 +936,118 @@ const DisplayTables = (props) => {
           <Accordion.Header>Charts</Accordion.Header>
           <Accordion.Body>
             <GenerateChart projects={projects} />
-            <CreateButton />
+
+            <CreatePDFButton />
+            <br></br>
+            <CreateDocxButton />
+            <br></br>
+            <StdButton>Generate XLS</StdButton>
+          </Accordion.Body>
+        </Accordion.Item>
+
+        <Accordion.Item eventKey="4">
+          <Accordion.Header>Logging</Accordion.Header>
+          <Accordion.Body>
+            <Logging />
           </Accordion.Body>
         </Accordion.Item>
       </Accordion>
     </>
   );
 };
+let tagValueConstant = null;
 
-const ProjectTable = (props) => {
+export const GetTagValue = (props, callback) => {
+  const tagValue = props.tagValue;
+  // setSearchValue(tagValue)
+  tagValueConstant = tagValue.substring(1, tagValue.length - 1);
+  console.log("HAHAHHAHAHHAHHAHAHHA " + tagValueConstant);
+  localStorage.setItem("tag-value", tagValueConstant);
+};
+
+const logsArr = [
+  {
+    id: 1,
+    logProject: "love in action",
+    logDescription: "Project budget = 10000 to 6000",
+    logAction: "Update",
+    logDoneByUser: "test",
+    logDate: "30/03/2023 02:18",
+  },
+  {
+    id: 2,
+    logProject: "Project Youth",
+    logDescription: "Project Description = Help young teenager in need",
+    logAction: "Update",
+    logDoneByUser: "test",
+    logDate: "30/03/2023 01:10",
+  },
+];
+
+const Logging = () => {
+  const [logs, setLogs] = useState(logsArr);
+
+  useEffect(() => {
+    const storedLogs = JSON.parse(localStorage.getItem("logs"));
+    if (storedLogs) {
+      setLogs(storedLogs);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("logs", JSON.stringify(logs));
+  }, [logs]);
+
+  const handleDeleteLog = (id) => {
+    setLogs(logs.filter((log) => log.id !== id));
+  };
+
+  return (
+    <>
+      <Table striped bordered hover>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Log Project</th>
+            <th>Log User</th>
+            <th>Log Action</th>
+            <th>Log Description</th>
+            <th>Log Date</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map((log, index) => (
+            <tr key={log.id}>
+              <td>{index + 1}</td>
+              <td>{log.logProject}</td>
+              <td>{log.logDoneByUser}</td>
+              <td>{log.logAction}</td>
+              <td>{log.logDescription}</td>
+              <td>{log.logDate}</td>
+              <td>
+                <button
+                  onClick={() => handleDeleteLog(log.id)}
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </>
+  );
+};
+
+export const ProjectTable = (props) => {
   const projects = props.projects;
   const applySorting = props.applySorting;
   const routeChange = props.routeChange;
   const sorting = props.sorting;
   const [timelines, setTimeline] = useState([]);
   const [budgets, setBudget] = useState([]);
+  const logs = props.logs;
   useEffect(() => {
     const getTimelineData = async () => {
       const res = await axios.get(`https://localhost:5001/api/Timeline/All`);
@@ -905,6 +1072,7 @@ const ProjectTable = (props) => {
               Project Name
             </th>
             <th
+              style={{ cursor: "pointer" }}
               colSpan={2}
               onClick={() => {
                 console.log(sorting);
@@ -921,11 +1089,13 @@ const ProjectTable = (props) => {
               Project Type
             </th> */}
             <th
+              style={{ cursor: "pointer" }}
               onClick={() => applySorting("ProjectBudget", !sorting.ascending)}
             >
               Project Budget
             </th>
             <th
+              style={{ cursor: "pointer" }}
               onClick={() =>
                 applySorting("ProjectStartDate", !sorting.ascending)
               }
@@ -933,11 +1103,13 @@ const ProjectTable = (props) => {
               Start Date
             </th>
             <th
+              style={{ cursor: "pointer" }}
               onClick={() => applySorting("ProjectEndDate", !sorting.ascending)}
             >
               End Date
             </th>
             <th
+              style={{ cursor: "pointer" }}
               onClick={() => applySorting("ProjectStatus", !sorting.ascending)}
             >
               Project Status
@@ -999,9 +1171,51 @@ const ProjectTable = (props) => {
               </tr>
             </tbody>
           );
-        })}
+        })},
       </Table>
       <ToastContainer theme="dark" />
+    </>
+  );
+};
+
+export const BudgetTable = (props) => {
+  const budgetRanges = [
+    { min: 0, max: 10, label: "< $1000" },
+    { min: 10, max: 50, label: "$1000-$5000" },
+    { min: 50, max: 100, label: "$5000-$10000" },
+    { min: 100, max: Infinity, label: "> $10000" },
+  ];
+
+  const budgetData = [
+    { range: "< $1000", count: 1 },
+    { range: "$1000-$5000", count: 2 },
+    { range: "$5000-$10000", count: 3 },
+    { range: "> $10000", count: 2 },
+  ];
+
+  return (
+    <>
+      <div id="budgettable">
+        <Table striped bordered hover>
+          <thead>
+            <tr>
+              <th>Budget Range</th>
+              <th>Project Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {budgetData.map((item, key) => {
+              return (
+                <tr key={key}>
+                  <td>{item.range}</td>
+                  <td>{item.count}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+        <ToastContainer theme="dark" />
+      </div>
     </>
   );
 };
@@ -1024,12 +1238,13 @@ const GenerateChart = (props) => {
     getBudgetData();
     getTimelineData();
   }, []);
+
   const getChartData3 = (projects) => {
     const inProgress = projects.filter((project) => {
-      return project.ProjectStatus !== "Archived";
+      return project.ProjectStatus === "In progress";
     }).length;
     const completed = projects.filter((project) => {
-      return project.ProjectStatus === "Archived";
+      return project.ProjectStatus === "Completed";
     }).length;
     console.log(completed);
     return {
@@ -1041,12 +1256,56 @@ const GenerateChart = (props) => {
           backgroundColor: ["#FF1818", "#5463FF"],
         },
       ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
+        },
+      ],
     };
   };
+
+  const pieChartOptions = {
+    backgroundColor: "white",
+    maintainAspectRatio: false,
+    legend: {
+      position: "bottom",
+    },
+    plugins: {
+      datalabels: {
+        display: true,
+        color: "white",
+        font: {
+          weight: "bold",
+        },
+        formatter: (value, context) => {
+          return context.chart.data.labels[context.dataIndex];
+        },
+      },
+    },
+    scales: {
+      x: {
+        backgroundColor: "transparent",
+      },
+      y: {
+        backgroundColor: "transparent",
+      },
+    },
+  };
+
   const getChartData4 = (projects, timelines) => {
     const now = new Date();
     const inProgress = projects.filter((project) => {
-      return project.ProjectStatus !== "Archived";
+      return project.ProjectStatus === "In progress";
     });
     const data = inProgress.map((project) => {
       const timeline = timelines.find(
@@ -1068,63 +1327,192 @@ const GenerateChart = (props) => {
           backgroundColor: ["#5463FF"],
         },
       ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
+        },
+      ],
     };
   };
+
+  const barChartOptions = {
+    maintainAspectRatio: false,
+    scales: {
+      yAxes: [
+        {
+          ticks: {
+            beginAtZero: true,
+          },
+          backgroundColor: "transparent",
+        },
+      ],
+      xAxes: [
+        {
+          ticks: {
+            beginAtZero: true,
+          },
+          backgroundColor: "transparent",
+        },
+      ],
+    },
+  };
   return (
-    <div id="pdffile">
-      <section class="report-dashboard">
-        <div class="row">
-          <div class="flex-container">
-            <div class="report-dashboard-item">
-              {/* {console.log(projects.ProjectId)} */}
-              <div
-                style={{
-                  width: 600,
-                  height: 600,
-                  overflow: "auto",
-                  margin: "auto",
-                }}
-              >
-                <Pie data={getChartData3(projects)} />
+    <div>
+      <div
+        id="pdffile"
+        style={
+          {
+            // backgroundImage:
+            //   "url('https://www.solidbackgrounds.com/images/2560x1440/2560x1440-white-solid-color-background.jpg')",
+            // backgroundColor: "white",
+          }
+        }
+      >
+        <section className="report-dashboard">
+          <div className="row">
+            <div className="flex-container" style={{ textAlign: "center" }}>
+              <div className="report-dashboard-item">
+                <div
+                  style={{
+                    width: 600,
+                    height: 600,
+                    overflow: "auto",
+                    margin: "auto",
+                    display: "inline-block",
+                  }}
+                >
+                  <Pie
+                    data={getChartData3(projects)}
+                    options={pieChartOptions}
+                  />
+                </div>
+                <div
+                  style={{
+                    width: 600,
+                    height: 600,
+                    overflow: "auto",
+                    margin: "auto",
+                    display: "inline-block",
+                  }}
+                >
+                  <Bar
+                    data={getChartData4(projects, timelines)}
+                    options={barChartOptions}
+                  />
+                </div>
+                <BudgetTable />
               </div>
             </div>
           </div>
-        </div>
-      </section>
-      <section class="report-dashboard">
-        <div class="row">
-          <div class="flex-container">
-            <div class="report-dashboard-item">
-              <div
-                style={{
-                  width: 600,
-                  height: 600,
-                  overflow: "auto",
-                  margin: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Bar data={getChartData4(projects, timelines)} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 };
 
-export const CreateButton = (props) => {
-  const exportPDF = () => {
-    const report = new JsPDF("portrait", "pt", "a4");
-    report.html(document.getElementById("pdffile")).then(() => {
-      report.save("Default.pdf");
+export const CreateDocxButton = (props) => {
+  const generateDocx = (element, filename = "") => {
+    const canvas = document.getElementsByTagName("canvas");
+
+    const budgettable = document.getElementById("budgettable");
+    // Use html2canvas to generate a canvas element from the table
+    html2canvas(budgettable).then((tableCanvas) => {
+      const tableImgData = tableCanvas.toDataURL("image/png", 1.0);
+
+      const imgData = canvas[0].toDataURL("image/png", 1.0);
+      const imgData2 = canvas[1].toDataURL("image/png", 1.0);
+
+
+      var preHtml =
+        "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+      var postHtml = "</body></html>";
+      // var html = preHtml + document.getElementById(element).innerHTML + postHtml;
+      var html = preHtml 
+      + "<h2>Projects in progress and completed</h2>"
+      + "<img src='" + imgData + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Days left to completion</h2>"
+      + "<img src='" + imgData2 + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Number of projects in budget range</h2>"
+      + "<img src='" + tableImgData + "' width='600'/>" 
+      + postHtml;
+
+      var blob = new Blob(["\ufeff", html], {
+        type: "application/msword",
+      });
+
+      // Specify link url
+      var url =
+        "data:application/vnd.ms-word;charset=utf-8," + encodeURIComponent(html);
+
+      // Specify file name
+      filename = filename ? filename + ".doc" : "document.doc";
+
+      // Create download link element
+      var downloadLink = document.createElement("a");
+
+      document.body.appendChild(downloadLink);
+
+      if (navigator.msSaveOrOpenBlob) {
+        navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        // Create a link to the file
+        downloadLink.href = url;
+
+        // Setting the file name
+        downloadLink.download = filename;
+
+        //triggering the function
+        downloadLink.click();
+      }
+
+      document.body.removeChild(downloadLink);
     });
   };
+
+  return (
+    <StdButton onClick={() => generateDocx("pdffile", "word.docx")}>
+      Generate DOCX
+    </StdButton>
+  );
+};
+
+export const CreatePDFButton = (props) => {
+  const exportPDF = () => {
+    const canvas = document.getElementsByTagName("canvas");
+
+    const budgettable = document.getElementById("budgettable");
+
+    // Use html2canvas to generate a canvas element from the table
+    html2canvas(budgettable).then((tableCanvas) => {
+      const tableImgData = tableCanvas.toDataURL("image/png", 1.0);
+
+      const imgData = canvas[0].toDataURL("image/png", 1.0);
+      const imgData2 = canvas[1].toDataURL("image/png", 1.0);
+
+      let pdf = new JsPDF("p", "pt", "a4");
+      pdf.addImage(imgData, "PNG", 20, 30, 250, 250);
+      pdf.addImage(imgData2, "PNG", 320, 30, 250, 250);
+      pdf.addImage(tableImgData, "PNG", 0, 350, 600, 150);
+
+      pdf.save("Default.pdf");
+    });
+  };
+
   return <StdButton onClick={() => exportPDF()}>Generate PDF</StdButton>;
 };
+
 class ViewManagement extends React.Component {
   state = {
     drawerOpen: false,
@@ -1204,10 +1592,10 @@ class ViewManagement extends React.Component {
                     <FaFileCsv size={30} />
                     {this.props.children
                       ? this.props.children[
-                          index +
-                            (this.state.currentPage - 1) *
-                              this.state.itemsPerPage
-                        ]
+                      index +
+                      (this.state.currentPage - 1) *
+                      this.state.itemsPerPage
+                      ]
                       : ""}
                   </ExpandableRow>
                 );
