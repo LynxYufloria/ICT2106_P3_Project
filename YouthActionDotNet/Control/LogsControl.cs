@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,10 @@ namespace YouthActionDotNet.Control
     {
         private LogRepositoryIn LogRepositoryIn;
         private LogRepositoryOut LogRepositoryOut;
+
+        private List<IObserver> observers = new List<IObserver>();
+
+        private Project projects;
 
 
         JsonSerializerSettings settings = new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore};
@@ -31,9 +36,9 @@ namespace YouthActionDotNet.Control
         }
 
         public async Task<ActionResult<string>> Create(Logs template)
-        {
-            var log = await LogRepositoryIn.InsertAsync(template);
-            return JsonConvert.SerializeObject(new { sucess = true, message = "Log Created", data = log});
+        {  
+            var log = await LogRepositoryIn.MakeLog(template.logProject, template.logAction, template.logDescription, template.logDoneByUser, template.logDate);
+            return JsonConvert.SerializeObject(new { sucess = true, data = template, message = "Log Created" });
         }
 
         public async Task<ActionResult<string>> Get(string id)
@@ -48,7 +53,7 @@ namespace YouthActionDotNet.Control
 
         public async Task<ActionResult<string>> Update(string id, Logs template)
         {
-            if (id != template.logId)
+            if (id != template.logId.ToString())
             {
                 return JsonConvert.SerializeObject(new { success = false, data = "", message = "Log id not match" });
             }
@@ -72,7 +77,7 @@ namespace YouthActionDotNet.Control
 
         public async Task<ActionResult<string>> UpdateAndFetchAll(string id, Logs template)
         {
-            if (id != template.logId)
+            if (id != template.logId.ToString())
             {
                 return JsonConvert.SerializeObject(new { success = false, data = "", message = "Log Id Mismatch" });
             }
@@ -127,5 +132,42 @@ namespace YouthActionDotNet.Control
         {
             throw new NotImplementedException();
         }
+
+        public void Attach(IObserver observer) {
+            observers.Add(observer);
+        }
+
+        // Remove an observer from the list
+        public void Detach(IObserver observer) {
+            observers.Remove(observer);
+        }
+
+        // Notify all observers of a state change
+        public void Notify(Project project) {
+            foreach (var observer in observers) {
+            observer.Update(project);
+            }
+        }
+
+        public interface IObserver
+    {
+        void Update(Project project);
+    }
+    }
+
+    public class ConcreteObserver : YouthActionDotNet.Models.IObserver
+    {
+    private Project projects;
+
+    public ConcreteObserver(Project projects) {
+        this.projects = projects;
+        projects.Attach(this);
+    }
+
+    public void Update(Project project) {
+        Console.WriteLine("Project status updated: " + project);
+        // Do something in response to the state change
+        Logs newLog = new Logs();
+    }
     }
 }

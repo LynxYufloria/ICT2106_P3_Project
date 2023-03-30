@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "docs": "^0.3.2-canary.0",
     "docx": "^8.0.1",
     "file-saver": "^2.0.5",
     "redocx": "^1.1.4"

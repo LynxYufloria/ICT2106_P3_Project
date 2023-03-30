@@ -23,8 +23,13 @@ import { FaFileWord } from "react-icons/fa";
 import { FaFileCsv } from "react-icons/fa";
 import { FaFilePdf } from "react-icons/fa";
 import { Pie, Bar, Line } from "react-chartjs-2";
+
 import { saveAs } from "file-saver";
 import { Document, Packer, Paragraph } from "docx";
+import html2canvas from "html2canvas";
+
+import { Button } from 'react-bootstrap';
+
 export default class Project extends React.Component {
   // state = {
   //   content: null,
@@ -142,8 +147,8 @@ export default class Project extends React.Component {
       return perm === "Module"
         ? null
         : perms[perm] === true
-        ? reformattedPerms.push(perm)
-        : null;
+          ? reformattedPerms.push(perm)
+          : null;
     });
 
     this.setState({
@@ -359,6 +364,47 @@ export default class Project extends React.Component {
         archived: archived,
         loading: false,
       });
+    });
+  };
+
+  createLog = async (data) => {
+    return fetch("https://localhost:5001/api/Logs/Create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }).then(function (res) {
+      return res.json();
+    });
+  };
+
+  updateLog = async (data) => {
+    console.log(data);
+    return fetch(`${this.settings.api}UpdateAndFetch/${data.logId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }).then(async (res) => {
+      return res.json();
+    });
+  };
+
+  handleLogUpdate = async (data) => {
+    await this.updateLog(data).then((content) => {
+      if (content.success) {
+        this.setState({
+          error: "",
+        });
+        return true;
+      } else {
+        this.setState({
+          error: content.message,
+        });
+        return false;
+      }
     });
   };
   //------------------------------------------------TO BE UPDATED---------------------------------------//
@@ -621,26 +667,6 @@ export default class Project extends React.Component {
             permissions={this.props.permissions}
             requestError={this.requestError}
             has={this.has}
-            extraComponents={[
-              {
-                label: "Archived Projects",
-                key: "archivedProjects",
-                requiredPerms: ["Create", "Update", "Delete", "Read"],
-                component: (
-                  <ViewManagement
-                    settings={this.settings}
-                    requestArchived={this.requestArchived}
-                    updateHandle={this.props.updateHandle}
-                    headers={this.state.settings.data.ColumnSettings}
-                    fieldSettings={this.state.settings.data.FieldSettings}
-                    setExpansionContent={this.props.setExpansionContent}
-                    data={this.state.archived.data}
-                    requestError={this.requestError}
-                    api={this.settings.api}
-                  ></ViewManagement>
-                ),
-              },
-            ]}
           >
             <DisplayTables
               data={this.state.content.data}
@@ -784,8 +810,6 @@ const DisplayTables = (props) => {
         })
         .slice();
     }
-    // const { tagValue } = this.props;
-    // Replace currentprojects with sorted currentprojects
     const projectsPinned = sortedProjects.filter((project) => {
       return project.ProjectViewStatus == "Pinned";
     });
@@ -850,6 +874,7 @@ const DisplayTables = (props) => {
           ProjectCompletionDate: projRef[0].ProjectCompletionDate,
           ProjectVolunteer: projRef[0].ProjectVolunteer,
           ProjectStatus: projRef[0].ProjectStatus,
+          ProjectViewStatus: projRef[0].ProjectViewStatus,
           // ProjectType: projRef[0].ProjectType,
           ServiceCenterId: projRef[0].ServiceCenterId,
         };
@@ -915,13 +940,15 @@ const DisplayTables = (props) => {
             <CreatePDFButton />
             <br></br>
             <CreateDocxButton />
+            <br></br>
+            <StdButton>Generate XLS</StdButton>
           </Accordion.Body>
         </Accordion.Item>
 
         <Accordion.Item eventKey="4">
           <Accordion.Header>Logging</Accordion.Header>
           <Accordion.Body>
-            <Logging logs={logArr} />
+            <Logging />
           </Accordion.Body>
         </Accordion.Item>
       </Accordion>
@@ -938,48 +965,73 @@ export const GetTagValue = (props, callback) => {
   localStorage.setItem("tag-value", tagValueConstant);
 };
 
-const logArr = [
+const logsArr = [
   {
     id: 1,
-    project: "love in action",
-    name: "Project budget = 10000 to 6000",
-    action: "Update",
-    user: "test",
-    date: "30-3-2023",
+    logProject: "love in action",
+    logDescription: "Project budget = 10000 to 6000",
+    logAction: "Update",
+    logDoneByUser: "test",
+    logDate: "30/03/2023 02:18",
   },
   {
     id: 2,
-    project: "Project Youth",
-    name: "Project status = Started to In Progress",
-    action: "Update",
-    user: "test",
-    date: "30-3-2023",
+    logProject: "Project Youth",
+    logDescription: "Project Description = Help young teenager in need",
+    logAction: "Update",
+    logDoneByUser: "test",
+    logDate: "30/03/2023 01:10",
   },
 ];
 
-const Logging = ({ logs }) => {
+const Logging = () => {
+  const [logs, setLogs] = useState(logsArr);
+
+  useEffect(() => {
+    const storedLogs = JSON.parse(localStorage.getItem("logs"));
+    if (storedLogs) {
+      setLogs(storedLogs);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("logs", JSON.stringify(logs));
+  }, [logs]);
+
+  const handleDeleteLog = (id) => {
+    setLogs(logs.filter((log) => log.id !== id));
+  };
+
   return (
     <>
       <Table striped bordered hover>
         <thead>
           <tr>
             <th>#</th>
-            <th>Project</th>
-            <th>Log Name</th>
+            <th>Log Project</th>
+            <th>Log User</th>
             <th>Log Action</th>
-            <th>User</th>
-            <th>Date</th>
+            <th>Log Description</th>
+            <th>Log Date</th>
+            <th>Delete</th>
           </tr>
         </thead>
         <tbody>
           {logs.map((log, index) => (
             <tr key={log.id}>
               <td>{index + 1}</td>
-              <td>{log.project}</td>
-              <td>{log.name}</td>
-              <td>{log.action}</td>
-              <td>{log.user}</td>
-              <td>{log.date}</td>
+              <td>{log.logProject}</td>
+              <td>{log.logDoneByUser}</td>
+              <td>{log.logAction}</td>
+              <td>{log.logDescription}</td>
+              <td>{log.logDate}</td>
+              <td>
+                <button
+                  onClick={() => handleDeleteLog(log.id)}
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -995,6 +1047,7 @@ export const ProjectTable = (props) => {
   const sorting = props.sorting;
   const [timelines, setTimeline] = useState([]);
   const [budgets, setBudget] = useState([]);
+  const logs = props.logs;
   useEffect(() => {
     const getTimelineData = async () => {
       const res = await axios.get(`https://localhost:5001/api/Timeline/All`);
@@ -1118,7 +1171,7 @@ export const ProjectTable = (props) => {
               </tr>
             </tbody>
           );
-        })}
+        })},
       </Table>
       <ToastContainer theme="dark" />
     </>
@@ -1142,25 +1195,27 @@ export const BudgetTable = (props) => {
 
   return (
     <>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>Budget Range</th>
-            <th>Project Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          {budgetData.map((item, key) => {
-            return (
-              <tr key={key}>
-                <td>{item.range}</td>
-                <td>{item.count}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </Table>
-      <ToastContainer theme="dark" />
+      <div id="budgettable">
+        <Table striped bordered hover>
+          <thead>
+            <tr>
+              <th>Budget Range</th>
+              <th>Project Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {budgetData.map((item, key) => {
+              return (
+                <tr key={key}>
+                  <td>{item.range}</td>
+                  <td>{item.count}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+        <ToastContainer theme="dark" />
+      </div>
     </>
   );
 };
@@ -1201,6 +1256,21 @@ const GenerateChart = (props) => {
           backgroundColor: ["#FF1818", "#5463FF"],
         },
       ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
+        },
+      ],
     };
   };
 
@@ -1224,10 +1294,10 @@ const GenerateChart = (props) => {
     },
     scales: {
       x: {
-        backgroundColor: "white",
+        backgroundColor: "transparent",
       },
       y: {
-        backgroundColor: "white",
+        backgroundColor: "transparent",
       },
     },
   };
@@ -1257,6 +1327,21 @@ const GenerateChart = (props) => {
           backgroundColor: ["#5463FF"],
         },
       ],
+      plugins: [
+        {
+          id: "whiteBackground",
+          beforeDraw: (chartInstance) => {
+            const ctx = chartInstance.canvas.getContext("2d");
+            ctx.fillStyle = "white";
+            ctx.fillRect(
+              0,
+              0,
+              chartInstance.canvas.width,
+              chartInstance.canvas.height
+            );
+          },
+        },
+      ],
     };
   };
 
@@ -1268,7 +1353,7 @@ const GenerateChart = (props) => {
           ticks: {
             beginAtZero: true,
           },
-          backgroundColor: "white",
+          backgroundColor: "transparent",
         },
       ],
       xAxes: [
@@ -1276,7 +1361,7 @@ const GenerateChart = (props) => {
           ticks: {
             beginAtZero: true,
           },
-          backgroundColor: "white",
+          backgroundColor: "transparent",
         },
       ],
     },
@@ -1285,10 +1370,13 @@ const GenerateChart = (props) => {
     <div>
       <div
         id="pdffile"
-        style={{
-          backgroundImage:
-            "url('https://www.solidbackgrounds.com/images/2560x1440/2560x1440-white-solid-color-background.jpg')",
-        }}
+        style={
+          {
+            // backgroundImage:
+            //   "url('https://www.solidbackgrounds.com/images/2560x1440/2560x1440-white-solid-color-background.jpg')",
+            // backgroundColor: "white",
+          }
+        }
       >
         <section className="report-dashboard">
           <div className="row">
@@ -1334,41 +1422,63 @@ const GenerateChart = (props) => {
 
 export const CreateDocxButton = (props) => {
   const generateDocx = (element, filename = "") => {
-    var preHtml =
-      "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
-    var postHtml = "</body></html>";
-    var html = preHtml + document.getElementById(element).innerHTML + postHtml;
+    const canvas = document.getElementsByTagName("canvas");
 
-    var blob = new Blob(["\ufeff", html], {
-      type: "application/msword",
+    const budgettable = document.getElementById("budgettable");
+    // Use html2canvas to generate a canvas element from the table
+    html2canvas(budgettable).then((tableCanvas) => {
+      const tableImgData = tableCanvas.toDataURL("image/png", 1.0);
+
+      const imgData = canvas[0].toDataURL("image/png", 1.0);
+      const imgData2 = canvas[1].toDataURL("image/png", 1.0);
+
+
+      var preHtml =
+        "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+      var postHtml = "</body></html>";
+      // var html = preHtml + document.getElementById(element).innerHTML + postHtml;
+      var html = preHtml 
+      + "<h2>Projects in progress and completed</h2>"
+      + "<img src='" + imgData + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Days left to completion</h2>"
+      + "<img src='" + imgData2 + "' width='600' height='600'/>" 
+      + "<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>" 
+      + "<h2>Number of projects in budget range</h2>"
+      + "<img src='" + tableImgData + "' width='600'/>" 
+      + postHtml;
+
+      var blob = new Blob(["\ufeff", html], {
+        type: "application/msword",
+      });
+
+      // Specify link url
+      var url =
+        "data:application/vnd.ms-word;charset=utf-8," + encodeURIComponent(html);
+
+      // Specify file name
+      filename = filename ? filename + ".doc" : "document.doc";
+
+      // Create download link element
+      var downloadLink = document.createElement("a");
+
+      document.body.appendChild(downloadLink);
+
+      if (navigator.msSaveOrOpenBlob) {
+        navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        // Create a link to the file
+        downloadLink.href = url;
+
+        // Setting the file name
+        downloadLink.download = filename;
+
+        //triggering the function
+        downloadLink.click();
+      }
+
+      document.body.removeChild(downloadLink);
     });
-
-    // Specify link url
-    var url =
-      "data:application/vnd.ms-word;charset=utf-8," + encodeURIComponent(html);
-
-    // Specify file name
-    filename = filename ? filename + ".doc" : "document.doc";
-
-    // Create download link element
-    var downloadLink = document.createElement("a");
-
-    document.body.appendChild(downloadLink);
-
-    if (navigator.msSaveOrOpenBlob) {
-      navigator.msSaveOrOpenBlob(blob, filename);
-    } else {
-      // Create a link to the file
-      downloadLink.href = url;
-
-      // Setting the file name
-      downloadLink.download = filename;
-
-      //triggering the function
-      downloadLink.click();
-    }
-
-    document.body.removeChild(downloadLink);
   };
 
   return (
@@ -1380,13 +1490,29 @@ export const CreateDocxButton = (props) => {
 
 export const CreatePDFButton = (props) => {
   const exportPDF = () => {
-    const report = new JsPDF("p", "pt", [1850, 1900]);
-    report.html(document.getElementById("pdffile")).then(() => {
-      report.save("Default.pdf");
+    const canvas = document.getElementsByTagName("canvas");
+
+    const budgettable = document.getElementById("budgettable");
+
+    // Use html2canvas to generate a canvas element from the table
+    html2canvas(budgettable).then((tableCanvas) => {
+      const tableImgData = tableCanvas.toDataURL("image/png", 1.0);
+
+      const imgData = canvas[0].toDataURL("image/png", 1.0);
+      const imgData2 = canvas[1].toDataURL("image/png", 1.0);
+
+      let pdf = new JsPDF("p", "pt", "a4");
+      pdf.addImage(imgData, "PNG", 20, 30, 250, 250);
+      pdf.addImage(imgData2, "PNG", 320, 30, 250, 250);
+      pdf.addImage(tableImgData, "PNG", 0, 350, 600, 150);
+
+      pdf.save("Default.pdf");
     });
   };
+
   return <StdButton onClick={() => exportPDF()}>Generate PDF</StdButton>;
 };
+
 class ViewManagement extends React.Component {
   state = {
     drawerOpen: false,
@@ -1466,10 +1592,10 @@ class ViewManagement extends React.Component {
                     <FaFileCsv size={30} />
                     {this.props.children
                       ? this.props.children[
-                          index +
-                            (this.state.currentPage - 1) *
-                              this.state.itemsPerPage
-                        ]
+                      index +
+                      (this.state.currentPage - 1) *
+                      this.state.itemsPerPage
+                      ]
                       : ""}
                   </ExpandableRow>
                 );

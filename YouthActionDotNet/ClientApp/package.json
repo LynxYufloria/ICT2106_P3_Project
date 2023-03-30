@@ -10,6 +10,7 @@
     "d3-cloud": "^1.2.5",
     "docx": "^8.0.1",
     "file-saver": "^2.0.5",
+    "html2canvas": "^1.4.1",
     "jquery": "^3.5.1",
     "jspdf": "^2.5.1",
     "merge": "^2.1.1",

@@ -71,9 +71,8 @@ namespace YouthActionDotNet.Models
     {
         void Update(Project project);
     }
-}
 
-public class ConcreteObserver : YouthActionDotNet.Models.IObserver
+    public class ConcreteObserver : YouthActionDotNet.Models.IObserver
 {
   private Project projects;
 
@@ -86,16 +85,6 @@ public class ConcreteObserver : YouthActionDotNet.Models.IObserver
     Console.WriteLine("Project status updated: " + project);
     // Do something in response to the state change
     Logs newLog = new Logs();
-    newLog.logId = project.ProjectId;
-    newLog.logUserName = "test";
-    newLog.logAction = project.ProjectStatus;
-
   }
-
-  // Unsubscribe from the subject
-  public void Unsubscribe() {
-    projects.Detach(this);
-  }
-
 }
-
+}

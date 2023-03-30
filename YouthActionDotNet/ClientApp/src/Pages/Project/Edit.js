@@ -373,6 +373,7 @@ const ProjectTable = (props) => {
         ProjectDescription: data[0].ProjectDescription,
         // ProjectType: data[0].ProjectType,
         TimelineId: data[0].TimelineId,
+        ProjectViewStatus: data[0].ProjectViewStatus,
         ProjectStatus: data[0].ProjectStatus,
         BudgetId: data[0].BudgetId,
         ServiceCenterId: data[0].ServiceCenterId,
