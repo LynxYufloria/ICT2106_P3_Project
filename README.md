@@ -10,22 +10,8 @@ cd ..
 
 dotnet run
 
-# MODULE 1 TEAM 6
-
-Sample Donor
-username: testDonor  
-password: 1234  
-
-Sample Admin
-username: testAdmin  
-password: 1234  
-
-# ICT2106 Module 1 Team 1
-
+# MODULE 2 TEAM 3 & 4
 Sample Employee
-username: testEmployee
+username: test
 password: 1234
 
-Sample Volunteer
-username: testVolunteer
-password: 1234
